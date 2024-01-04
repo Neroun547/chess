@@ -24,8 +24,6 @@ const brokenWhiteFigure = [];
 const brokenBlackFigure = [];
 
 let move = "white";
-let shahForWhite = false;
-let shahForBlack = false;
 
 function drawSquare(x, y, width, height, color) {
     ctx.beginPath();
@@ -145,16 +143,12 @@ function drawFiguresOnStartPositions() {
             boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].elementOnBoard = {
                 type: figureWithoutPawns[i].type,
                 team: figureWithoutPawns[i].team,
-                x: boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].x,
-                y: boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].y,
                 doneFirstMove: false
             };
         } else {
             boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].elementOnBoard = {
                 type: figureWithoutPawns[i].type,
-                team: figureWithoutPawns[i].team,
-                x: boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].x,
-                y: boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].y
+                team: figureWithoutPawns[i].team
             };
         }
     }
@@ -1393,6 +1387,46 @@ function setNotAvailableMoveForKing(kingRow, kingCol, teamWithKing) {
             notAvailableMoveForKing.push([possibleMoveForKing[i][0], possibleMoveForKing[i][1]]);
         }
     }
+    // Emulate another move
+    let filteredPossibleMoveForKing = [];
+    let tmpAvailable = true;
+
+    for(let i = 0; i < possibleMoveForKing.length; i++) {
+        for(let j = 0; j < notAvailableMoveForKing.length; j++) {
+            if(possibleMoveForKing[i][0] === notAvailableMoveForKing[j][0] && possibleMoveForKing[i][1] === notAvailableMoveForKing[j][1]) {
+                tmpAvailable = false;
+
+                break;
+            }
+        }
+        if(tmpAvailable) {
+            filteredPossibleMoveForKing.push([possibleMoveForKing[i][0], possibleMoveForKing[i][1]]);
+        }
+        tmpAvailable = true;
+    }
+    let tmpKing = { ...boardArr[kingRow][kingCol].elementOnBoard };
+    let tmpIndexes;
+    let tmpElementOnBoard;
+
+    boardArr[kingRow][kingCol].elementOnBoard = null;
+
+    for(let i = 0; i < filteredPossibleMoveForKing.length; i++) {
+        if(!boardArr[filteredPossibleMoveForKing[i][0]][filteredPossibleMoveForKing[i][1]].elementOnBoard) {
+            tmpElementOnBoard = null;
+        } else {
+            tmpElementOnBoard = { ...boardArr[filteredPossibleMoveForKing[i][0]][filteredPossibleMoveForKing[i][1]].elementOnBoard };
+        }
+        boardArr[filteredPossibleMoveForKing[i][0]][filteredPossibleMoveForKing[i][1]].elementOnBoard = tmpKing;
+
+        tmpIndexes = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
+
+        if(tmpIndexes.findIndex(cord => cord[0] === filteredPossibleMoveForKing[i][0] && cord[1] === filteredPossibleMoveForKing[i][1]) !== -1) {
+            notAvailableMoveForKing.push([filteredPossibleMoveForKing[i][0], filteredPossibleMoveForKing[i][1]]);
+        }
+        boardArr[filteredPossibleMoveForKing[i][0]][filteredPossibleMoveForKing[i][1]].elementOnBoard = tmpElementOnBoard;
+    }
+    boardArr[kingRow][kingCol].elementOnBoard = tmpKing;
+
     for(let i = 0; i < notAvailableMoveForKing.length; i++) {
         boardArr[notAvailableMoveForKing[i][0]][notAvailableMoveForKing[i][1]].availableForKing = false;
     }
@@ -1493,9 +1527,6 @@ canvas.addEventListener("click", function (e) {
                 && e.clientY <= boardArr[i][j].y + 125
                 && boardArr[i][j].possibleMove
             ) {
-                shahForWhite = false;
-                shahForBlack = false;
-
                 moveFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j], i, j);
                 deletePossibleMoveForFigure();
                 clearBlueColor();
@@ -1515,7 +1546,6 @@ canvas.addEventListener("click", function (e) {
                             drawKingImage(boardArr[king.row][king.col].x, boardArr[king.row][king.col].y, "black");
 
                             boardArr[king.row][king.col].color = "blue";
-                            shahForBlack = true;
                         }
                     }
                     move = "black";
@@ -1534,7 +1564,6 @@ canvas.addEventListener("click", function (e) {
                             drawKingImage(boardArr[king.row][king.col].x, boardArr[king.row][king.col].y, "white");
 
                             boardArr[king.row][king.col].color = "blue";
-                            shahForWhite = true;
                         }
                     }
                     move = "white";
