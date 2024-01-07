@@ -1,0 +1,23 @@
+.main-logo {
+    text-align: center;
+}
+
+.wrapper__buttons {
+    display: flex;
+    flex-direction: column;
+    margin-top: 200px;
+}
+
+.wrapper__buttons a {
+    width: 30%;
+    margin: 0 auto;
+    display: block;
+    margin-top: 50px;
+}
+
+.wrapper__buttons button {
+    width: 100%;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    cursor: pointer;
+}

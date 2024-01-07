@@ -1,0 +1,61 @@
+.wrapper__buttons {
+    display: flex;
+    flex-direction: column;
+    margin-top: 200px;
+}
+
+.wrapper__buttons button {
+    display: block;
+    width: 30%;
+    margin: 0 auto;
+    margin-top: 50px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    cursor: pointer;
+}
+
+.wrapper__hash {
+    display: none;
+    justify-content: space-between;
+    width: 90%;
+    background-color: #ccc;
+    margin: 0 auto;
+    margin-top: 50px;
+    padding: 10px;
+}
+
+.connect-to-game-form {
+    display: block;
+    max-width: 1000px;
+    margin: 0 auto;
+    margin-top: 140px;
+}
+
+.connect-to-game-form input {
+    width: 55%;
+    margin-left: 5px;
+}
+
+.wrapper__modal-error {
+    background-color: darkred;
+    color: #fff;
+    margin: 0 auto;
+    margin-top: 30px;
+    padding: 10px;
+    text-align: center;
+    width: 300px;
+    border-radius: 5px;
+}
+
+.wrapper__modal-success {
+    background-color: green;
+    color: #fff;
+    margin: 0 auto;
+    margin-top: 30px;
+    padding: 10px;
+    text-align: center;
+    width: 300px;
+    border-radius: 5px;
+}
+
+
