@@ -61,6 +61,11 @@ socket.on("set-team", (team) => {
     } else {
         move = localStorage.getItem(hash + "-team");
     }
+    if(move === "white") {
+        alert("Ви граєте за білі фігури");
+    } else {
+        alert("Ви граєте за чорні фігури");
+    }
     waitForMoveAnotherTeam = move !== "white";
 });
 

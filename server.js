@@ -78,6 +78,7 @@ const server = createServer( async (req, res) => {
             res.end("Not found");
         }
     } else {
+        res.writeHead(404);
         res.end("Not found");
     }
 }).listen(process.env.APP_PORT, () => {
