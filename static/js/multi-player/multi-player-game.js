@@ -1486,6 +1486,30 @@ function checkMat(kingRow, kingCol, teamWithKing) {
         && hasFigureWithTheSameTeamNotKing(teamWithKing)) {
         return false;
     }
+    const allPossibleFigureMoveWithCheckShah = [];
+
+    for(let i = 0; i < boardArr.length; i++) {
+        for(let j = 0; j < boardArr[i].length; j++) {
+            if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === PAWN_TYPE) {
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForPawn(i, j, teamWithKing, teamWithKing));
+            }
+            if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === ROOK_TYPE) {
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForRook(i, j, teamWithKing, teamWithKing));
+            }
+            if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === HORSE_TYPE) {
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForHorse(i, j, teamWithKing, teamWithKing));
+            }
+            if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === ELEPHANT_TYPE) {
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForElephant(i, j, teamWithKing, teamWithKing));
+            }
+            if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === QUEEN_TYPE) {
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForQueen(i, j, teamWithKing, teamWithKing));
+            }
+        }
+    }
+    if(allPossibleFigureMoveWithCheckShah.length) {
+        return false;
+    }
     return true;
 }
 
