@@ -612,7 +612,7 @@ function checkPossibleMoveForRook(row, col, team, checkShahFor="") {
             } else if(i < col) {
                 if(!boardArr[row][i].elementOnBoard) {
                     if(!checkShahLocal(boardArr[row][i], team)) {
-                        indexes.push([row, i]);
+                        tmpIndexes.push([row, i]);
                     }
                 }
                 if(boardArr[row][i].elementOnBoard && boardArr[row][i].elementOnBoard.team === "white") {
@@ -761,7 +761,7 @@ function checkPossibleMoveForRook(row, col, team, checkShahFor="") {
                 }
             } else if(i < col) {
                 if(!boardArr[row][i].elementOnBoard) {
-                    indexes.push([row, i]);
+                    tmpIndexes.push([row, i]);
                 }
                 if(boardArr[row][i].elementOnBoard && boardArr[row][i].elementOnBoard.team === "white") {
                     tmpIndexes = [];
