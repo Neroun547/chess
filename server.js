@@ -155,6 +155,31 @@ io.on("connect", (socket) => {
             socket.to(room).emit("get-game-board", board);
         });
     });
+    socket.on("offer-lose", (hash) => {
+
+        socket.rooms.forEach(room => {
+            socket.to(room).emit("offer-lose");
+        });
+        redisConnection.del(hash);
+        redisConnection.del(hash + "-team-another-player");
+    });
+    socket.on("offer-draw", () => {
+        socket.rooms.forEach(room => {
+            socket.to(room).emit("offer-draw");
+        });
+    });
+    socket.on("accept-draw", (hash) => {
+        socket.rooms.forEach(room => {
+            socket.to(room).emit("accept-draw");
+        });
+        redisConnection.del(hash);
+        redisConnection.del(hash + "-team-another-player");
+    });
+    socket.on("reject-draw", () => {
+        socket.rooms.forEach(room => {
+            socket.to(room).emit("reject-draw");
+        });
+    });
 });
 
 

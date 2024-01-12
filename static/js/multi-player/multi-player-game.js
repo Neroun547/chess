@@ -1,5 +1,8 @@
 const body = document.getElementsByTagName("body")[0];
 const canvas = document.getElementById("canvas");
+const offerLoseBtn = document.getElementById("offer-loss");
+const offerDrawBtn = document.getElementById("offer-draw");
+
 const socket = io();
 
 let move;
@@ -147,6 +150,55 @@ socket.on("player-win", (team) => {
         }
         gameEnd = true;
     }
+});
+
+socket.on("offer-lose", () => {
+    alert("Гравець здався");
+    gameEnd = true;
+
+    offerLoseBtn.remove();
+    offerDrawBtn.remove();
+});
+
+socket.on("offer-draw", () => {
+    const acceptDraw = confirm("Гравець запропонував нічію");
+
+    if(acceptDraw) {
+        gameEnd = true;
+        socket.emit("accept-draw", localStorage.getItem("game-hash"));
+
+        offerLoseBtn.remove();
+        offerDrawBtn.remove();
+    } else {
+        socket.emit("reject-draw");
+    }
+});
+
+socket.on("accept-draw", () => {
+    alert("Гравець прийняв нічію");
+
+    offerLoseBtn.remove();
+    offerDrawBtn.remove();
+
+    gameEnd = true;
+});
+
+socket.on("reject-draw", () => {
+    alert("Гравець відхилив нічію");
+});
+
+offerLoseBtn.addEventListener("click", function () {
+    alert("Ви здалися");
+    socket.emit("offer-lose", localStorage.getItem("game-hash"));
+
+    gameEnd = true;
+
+    offerLoseBtn.remove();
+    offerDrawBtn.remove();
+});
+
+offerDrawBtn.addEventListener("click", function () {
+    socket.emit("offer-draw");
 });
 
 const ctx = canvas.getContext("2d");
