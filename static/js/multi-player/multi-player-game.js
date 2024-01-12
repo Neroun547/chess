@@ -66,11 +66,21 @@ socket.on("set-team", (team) => {
     } else {
         alert("Ви граєте за чорні фігури");
     }
-    waitForMoveAnotherTeam = move !== "white";
+    if(!localStorage.getItem(hash + "-current-move")) {
+        waitForMoveAnotherTeam = team === "black";
+    } else if(localStorage.getItem(hash + "-current-move") && localStorage.getItem(hash + "-current-move") === move) {
+        waitForMoveAnotherTeam = false;
+    } else if(localStorage.getItem(hash + "-current-move") && localStorage.getItem(hash + "-current-move") !== move) {
+        waitForMoveAnotherTeam = true;
+    }
 });
 
 socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team) => {
-    if(team !== move && !gameEnd) {
+
+    if(document.getElementById("show-prev-move")) {
+        document.getElementById("show-prev-move").remove();
+    }
+    function movePlayerFigure() {
         boardArr[activeElementRow][activeElementCol].active = true;
 
         setActiveFigure(
@@ -92,6 +102,39 @@ socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElemen
             boardArr[king.row][king.col].color = "blue";
         }
         waitForMoveAnotherTeam = false;
+    }
+    if(team !== move && !gameEnd) {
+        movePlayerFigure();
+
+        localStorage.setItem(localStorage.getItem("game-hash") + "-current-move", move);
+
+        if(!document.getElementById("show-prev-move")) {
+            const button = document.createElement("button");
+
+            button.setAttribute("id", "show-prev-move");
+            button.innerText = "Повторити хід противника";
+
+            body.appendChild(button);
+
+            button.addEventListener("click", function () {
+                boardArr[activeElementRow][activeElementCol].elementOnBoard = { ...boardArr[row][col].elementOnBoard };
+                boardArr[row][col].elementOnBoard = null;
+
+                drawSquare(boardArr[row][col].x, boardArr[row][col].y, 125, 125, boardArr[row][col].color);
+                drawFigure(
+                    boardArr[activeElementRow][activeElementCol].x,
+                    boardArr[activeElementRow][activeElementCol].y,
+                    boardArr[activeElementRow][activeElementCol].elementOnBoard.type,
+                    boardArr[activeElementRow][activeElementCol].elementOnBoard.team
+                );
+
+                const timeout = setTimeout(function () {
+                    movePlayerFigure();
+
+                    clearTimeout(timeout);
+                }, 1000);
+            });
+        }
     }
 });
 
@@ -1675,6 +1718,8 @@ canvas.addEventListener("click", function (e) {
                     const {row, col} = findActiveElementRowAndCol();
 
                     moveFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j], i, j);
+
+                    localStorage.setItem(localStorage.getItem("game-hash") + "-current-move", move === "white" ? "black" : "white");
 
                     socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move);
 
