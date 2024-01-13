@@ -300,9 +300,6 @@ function drawFiguresOnStartPositions() {
     for(let i = 0; i < boardArr.length; i++) {
         drawImage(pawnImgWhite, boardArr[6][i].x, boardArr[6][i].y, 120, 120);
 
-        if(move === "white") {
-            boardArr[6][i].elementOnBoard = { type: PAWN_TYPE, team: "white", x: boardArr[6][i].x, y: boardArr[6][i].y };
-        }
         boardArr[6][i].elementOnBoard = { type: PAWN_TYPE, team: "white", x: boardArr[6][i].x, y: boardArr[6][i].y };
     }
     const figureWithoutPawns = [
@@ -1428,14 +1425,14 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
             drawFigure(xCord, yCord, element.elementOnBoard.type, element.elementOnBoard.team);
         }
         function getSelectedFigure() {
-            const result = prompt("Select new figure: " +
-                "1 - Queen" +
-                " 2 - Rook" +
-                " 3 - Horse" +
-                " 4 - Elephant").replaceAll(" ", "");
+            const result = prompt("Виберіть нову фігуру: " +
+                "1 - Королева" +
+                " 2 - Тура" +
+                " 3 - Кінь" +
+                " 4 - Слон").replaceAll(" ", "");
 
             if (result !== "1" && result !== "2" && result !== "3" && result !== "4") {
-                alert("Wrong value");
+                alert("Хибне значення");
 
                 return getSelectedFigure();
             }
