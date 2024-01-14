@@ -744,9 +744,6 @@ function checkPossibleMoveForRook(row, col, team, checkShahFor="") {
                     }
                 }
             }
-            indexes.push(...tmpIndexes);
-            tmpIndexes = [];
-
             if(i < row) {
                 if(boardArr[i][col].elementOnBoard && boardArr[i][col].elementOnBoard.team === "white") {
                     break;
@@ -880,9 +877,6 @@ function checkPossibleMoveForRook(row, col, team, checkShahFor="") {
                     tmpIndexes.push([i, col]);
                 }
             }
-            indexes.push(...tmpIndexes);
-            tmpIndexes = [];
-
             if(i < row) {
                 if(boardArr[i][col].elementOnBoard && boardArr[i][col].elementOnBoard.team === "white") {
                     break;
