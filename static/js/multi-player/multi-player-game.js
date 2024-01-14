@@ -1550,16 +1550,12 @@ function checkMat(kingRow, kingCol, teamWithKing) {
     if(!possibleMoveForKing.length && horseIndexes.findIndex(cord => cord[0] === kingRow && cord[1] === kingCol) !== -1) {
         return true;
     }
-    const indexes = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
+    const allPossibleMove = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
 
     for(let i = 0; i < possibleMoveForKing.length; i++) {
-        if(indexes.findIndex(cord => cord[0] === possibleMoveForKing[i][0] && cord[1] === possibleMoveForKing[i][1]) === -1) {
+        if(allPossibleMove.findIndex(cord => cord[0] === possibleMoveForKing[i][0] && cord[1] === possibleMoveForKing[i][1]) === -1) {
             return false;
         }
-    }
-    if(indexes.findIndex(cord => cord[0] === kingRow && cord[1] === kingCol) === -1
-        && getAllPossibleMove(teamWithKing).length) {
-        return false;
     }
     const allPossibleFigureMoveWithCheckShah = [];
 
