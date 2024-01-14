@@ -78,7 +78,7 @@ socket.on("set-team", (team) => {
     }
 });
 
-socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team, figureType) => {
+socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team, figureType, castling) => {
 
     if(document.getElementById("show-prev-move")) {
         document.getElementById("show-prev-move").remove();
@@ -96,6 +96,9 @@ socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElemen
         );
         const king = findKingColAndRow(move);
 
+        if(castling) {
+            boardArr[row][col].castling = true;
+        }
         moveFigure(cordX, cordY, boardArr[row][col], row, col);
         setNotAvailableMoveForKing(king.row, king.col, move);
 
@@ -1472,6 +1475,8 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
             drawFigure(boardArr[boardElementRow][3].x, boardArr[boardElementRow][3].y, ROOK_TYPE, element.elementOnBoard.team);
 
             boardElement.castling = false;
+
+            return true;
         }
         if(boardElement.castling && boardElementCol === 6) {
             ctx.beginPath();
@@ -1489,11 +1494,11 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
             drawFigure(boardArr[boardElementRow][5].x, boardArr[boardElementRow][5].y, ROOK_TYPE, element.elementOnBoard.team);
 
             boardElement.castling = false;
+
+            return true;
         }
         element.elementOnBoard = null;
         element.active = false;
-
-        return true;
     }
     return false;
 }
@@ -1745,12 +1750,15 @@ canvas.addEventListener("click", function (e) {
                 ) {
                     const {row, col} = findActiveElementRowAndCol();
 
-                    moveFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j], i, j);
+                    const castling = moveFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j], i, j);
 
                     localStorage.setItem(localStorage.getItem("game-hash") + "-current-move", move === "white" ? "black" : "white");
 
-                    socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move, boardArr[i][j].elementOnBoard.type);
-
+                    if(!castling) {
+                        socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move, boardArr[i][j].elementOnBoard.type);
+                    } else {
+                        socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move, boardArr[i][j].elementOnBoard.type, true)
+                    }
                     deletePossibleMoveForFigure();
                     clearBlueColor();
 

@@ -1281,10 +1281,7 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
         }
         element.elementOnBoard = null;
         element.active = false;
-
-        return true;
     }
-    return false;
 }
 
 function findKingColAndRow(team) {
