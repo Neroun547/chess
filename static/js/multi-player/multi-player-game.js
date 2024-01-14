@@ -78,13 +78,14 @@ socket.on("set-team", (team) => {
     }
 });
 
-socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team) => {
+socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team, figureType) => {
 
     if(document.getElementById("show-prev-move")) {
         document.getElementById("show-prev-move").remove();
     }
     function movePlayerFigure() {
         boardArr[activeElementRow][activeElementCol].active = true;
+        boardArr[activeElementRow][activeElementCol].elementOnBoard = { ...boardArr[activeElementRow][activeElementCol].elementOnBoard, type: figureType };
 
         setActiveFigure(
             boardArr[activeElementRow][activeElementCol],
@@ -1408,8 +1409,8 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
 
         drawSquare(xCord, yCord, 125, 125, boardElement.color);
 
-        if(element.elementOnBoard.type === PAWN_TYPE && yCord === 0 && element.elementOnBoard.team === "white"
-            || element.elementOnBoard.type === PAWN_TYPE && yCord === 875 && element.elementOnBoard.team === "black") {
+        if(element.elementOnBoard.type === PAWN_TYPE && yCord === 0 && element.elementOnBoard.team === "white" && element.elementOnBoard.team === move
+            || element.elementOnBoard.type === PAWN_TYPE && yCord === 875 && element.elementOnBoard.team === "black" && element.elementOnBoard.team === move) {
             const selectedFigure = getSelectedFigure();
 
             drawFigure(xCord, yCord, selectedFigure, element.elementOnBoard.team);
@@ -1755,7 +1756,7 @@ canvas.addEventListener("click", function (e) {
 
                     localStorage.setItem(localStorage.getItem("game-hash") + "-current-move", move === "white" ? "black" : "white");
 
-                    socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move);
+                    socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move, boardArr[i][j].elementOnBoard.type);
 
                     deletePossibleMoveForFigure();
                     clearBlueColor();

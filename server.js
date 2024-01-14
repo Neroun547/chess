@@ -140,9 +140,9 @@ io.on("connect", (socket) => {
             io.to(hash).emit("player-connected");
         }
     });
-    socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team) => {
+    socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team, figureType) => {
         socket.rooms.forEach(room => {
-            io.to(room).emit("move-figure", cordX, cordY, row, col, activeElementRow, activeElementCol, team);
+            io.to(room).emit("move-figure", cordX, cordY, row, col, activeElementRow, activeElementCol, team, figureType);
         });
     });
     socket.on("player-win", (team) => {
