@@ -1326,15 +1326,6 @@ function getAllPossibleMove(team) {
 }
 
 function checkMat(kingRow, kingCol, teamWithKing) {
-    function hasFigureWithTheSameTeamNotKing(team) {
-        for(let i = 0; i < boardArr.length; i++) {
-            for(let j = 0; j < boardArr[i].length; j++) {
-                if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type !== KING_TYPE) {
-                    return true;
-                }
-            }
-        }
-    }
     const possibleMoveForKing = checkPossibleMoveForKing(kingRow, kingCol, teamWithKing, false);
     let horseIndexes;
 
@@ -1359,7 +1350,7 @@ function checkMat(kingRow, kingCol, teamWithKing) {
         }
     }
     if(indexes.findIndex(cord => cord[0] === kingRow && cord[1] === kingCol) === -1
-        && hasFigureWithTheSameTeamNotKing(teamWithKing)) {
+        && getAllPossibleMove(teamWithKing).length) {
         return false;
     }
     const allPossibleFigureMoveWithCheckShah = [];
