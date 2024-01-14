@@ -1339,9 +1339,6 @@ function checkMat(kingRow, kingCol, teamWithKing) {
     if(!possibleMoveForKing.length && horseIndexes.findIndex(cord => cord[0] === kingRow && cord[1] === kingCol) !== -1) {
         return true;
     }
-    if(!possibleMoveForKing.length) {
-        return false;
-    }
     const indexes = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
 
     for(let i = 0; i < possibleMoveForKing.length; i++) {
