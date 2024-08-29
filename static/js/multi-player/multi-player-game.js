@@ -1715,9 +1715,9 @@ canvas.addEventListener("click", function (e) {
         for (let i = 0; i < boardArr.length; i++) {
             for (let j = 0; j < boardArr[i].length; j++) {
                 if (
-                    e.clientX >= boardArr[i][j].x && e.clientX <= boardArr[i][j].x + 125
-                    && e.clientY >= boardArr[i][j].y
-                    && e.clientY <= boardArr[i][j].y + 125
+                    e.layerX >= boardArr[i][j].x && e.layerX <= boardArr[i][j].x + 125
+                    && e.layerY >= boardArr[i][j].y
+                    && e.layerY <= boardArr[i][j].y + 125
                     && !boardArr[i][j].possibleMove
                     && !boardArr[i][j].elementOnBoard
                 ) {
@@ -1727,9 +1727,9 @@ canvas.addEventListener("click", function (e) {
                     break;
                 }
                 if (
-                    e.clientX >= boardArr[i][j].x && e.clientX <= boardArr[i][j].x + 125
-                    && e.clientY >= boardArr[i][j].y
-                    && e.clientY <= boardArr[i][j].y + 125
+                    e.layerX >= boardArr[i][j].x && e.layerX <= boardArr[i][j].x + 125
+                    && e.layerY >= boardArr[i][j].y
+                    && e.layerY <= boardArr[i][j].y + 125
                     && !boardArr[i][j].possibleMove
                     && boardArr[i][j].elementOnBoard
                     && boardArr[i][j].elementOnBoard.team === move
@@ -1742,9 +1742,9 @@ canvas.addEventListener("click", function (e) {
 
                     break;
                 } else if (
-                    e.clientX >= boardArr[i][j].x && e.clientX <= boardArr[i][j].x + 125
-                    && e.clientY >= boardArr[i][j].y
-                    && e.clientY <= boardArr[i][j].y + 125
+                    e.layerX >= boardArr[i][j].x && e.layerX <= boardArr[i][j].x + 125
+                    && e.layerY >= boardArr[i][j].y
+                    && e.layerY <= boardArr[i][j].y + 125
                     && boardArr[i][j].possibleMove
                     && !waitForMoveAnotherTeam
                 ) {
