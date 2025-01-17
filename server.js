@@ -63,12 +63,12 @@ const server = createServer( async (req, res) => {
         if(req.url === "/create-game") {
             const hash = createHash("sha256");
 
-            hash.update(String(Date.now() + Math.floor(Math.random() * 1000)));
+            hash.update(String(Date.now() + Math.floor(Math.random() * 1000000)));
 
             const hashString = hash.digest("hex");
 
             await redisConnection.set(hashString, 1, {
-                EX: 36000
+                EX: 172800
             });
 
             res.writeHead(201, { "Content-Type": "application/json" });
@@ -96,7 +96,9 @@ io.on("connect", (socket) => {
         const data = await redisConnection.get(hash);
 
         if(data && Number(data) === 1) {
-            await redisConnection.set(hash, "2");
+            await redisConnection.set(hash, "2", {
+                EX: 172800
+            });
 
             socket.join(hash);
             socket.emit("success-connect-to-room", "Success");
@@ -113,7 +115,9 @@ io.on("connect", (socket) => {
             const roomInRedis = await redisConnection.get(room);
 
             if(roomInRedis) {
-                await redisConnection.set(room, Number(roomInRedis) - 1);
+                await redisConnection.set(room, Number(roomInRedis) - 1, {
+                    EX: 172800
+                });
                 io.to(room).emit("player-leave", room);
             }
         });
@@ -123,7 +127,9 @@ io.on("connect", (socket) => {
         const roomInRedis = await redisConnection.get(hash);
 
         if(roomInRedis && Number(roomInRedis) < 2) {
-            await redisConnection.set(hash, Number(roomInRedis) + 1);
+            await redisConnection.set(hash, Number(roomInRedis) + 1, {
+                EX: 172800
+            });
             const teamInRedis = await redisConnection.get(hash + "-team-another-player");
 
             if(teamInRedis) {
@@ -135,7 +141,9 @@ io.on("connect", (socket) => {
                 socket.join(hash);
                 socket.emit("set-team", randomNumber === 0 ? "black" : "white");
 
-                await redisConnection.set(hash + "-team-another-player", randomNumber === 0 ? "black" : "white");
+                await redisConnection.set(hash + "-team-another-player", randomNumber === 0 ? "black" : "white", {
+                    EX: 172800
+                });
             }
             io.to(hash).emit("player-connected");
         }
