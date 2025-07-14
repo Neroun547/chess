@@ -26,6 +26,9 @@ const server = createServer( async (req, res) => {
         } else if(req.url === "/css/multi-player/multi-player.css") {
             res.writeHead(200, {"Content-Type": "text/css"});
             res.end(await readFile(resolve("static/css/multi-player/multi-player.css")));
+        } else if(req.url === "/js/game/main.js") {
+            res.writeHead(200, { "Content-Type": "text/javascript" });
+            res.end(await readFile(resolve("static/js/game/main.js")));
         } else if(req.url === "/js/single-player/single-player.js") {
             res.writeHead(200, {"Content-Type": "text/javascript"});
             res.end(await readFile(resolve("static/js/single-player/single-player.js")));

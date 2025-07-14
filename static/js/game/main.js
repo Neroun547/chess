@@ -1,211 +1,4 @@
-const body = document.getElementsByTagName("body")[0];
-const canvas = document.getElementById("canvas");
-const offerLoseBtn = document.getElementById("offer-loss");
-const offerDrawBtn = document.getElementById("offer-draw");
-
-const socket = io();
-
-let move;
-let waitForMoveAnotherTeam = false;
-let gameEnd = false;
-let alreadyHaveBoard = false;
-
-let boardArr = [
-    [],
-    [],
-    [],
-    [],
-    [],
-    [],
-    [],
-    []
-];
-
-
-canvas.style.display = "none";
-
-socket.emit("join-to-room-after-start", localStorage.getItem("game-hash"));
-
-socket.on("player-leave", () => {
-    const playerLeaveLogo = document.createElement("h1");
-    playerLeaveLogo.innerText = "Гравець вийшов. Почекайте поки він доєднається знову або створіть нову гру";
-    playerLeaveLogo.setAttribute("id", "player-leave-logo");
-
-    body.appendChild(playerLeaveLogo);
-});
-
-socket.on("player-connected", () => {
-    canvas.style.display = "block";
-
-    const playerLeaveLogo = document.getElementById("player-leave-logo");
-
-    if(playerLeaveLogo) {
-        playerLeaveLogo.remove();
-    }
-    socket.emit("get-game-board", JSON.stringify(boardArr));
-});
-
-socket.on("get-game-board", (board) => {
-
-    if(!alreadyHaveBoard) {
-        boardArr = JSON.parse(board);
-        drawGameBoard();
-
-        alreadyHaveBoard = true;
-    }
-});
-
-socket.on("set-team", (team) => {
-    const hash = localStorage.getItem("game-hash");
-
-    if(!localStorage.getItem(hash + "-team")) {
-        localStorage.setItem(hash + "-team", team);
-        move = team;
-    } else {
-        move = localStorage.getItem(hash + "-team");
-    }
-    if(move === "white") {
-        alert("Ви граєте за білі фігури");
-    } else {
-        alert("Ви граєте за чорні фігури");
-    }
-    if(!localStorage.getItem(hash + "-current-move")) {
-        waitForMoveAnotherTeam = team === "black";
-    } else if(localStorage.getItem(hash + "-current-move") && localStorage.getItem(hash + "-current-move") === move) {
-        waitForMoveAnotherTeam = false;
-    } else if(localStorage.getItem(hash + "-current-move") && localStorage.getItem(hash + "-current-move") !== move) {
-        waitForMoveAnotherTeam = true;
-    }
-});
-
-socket.on("move-figure", (cordX, cordY, row, col, activeElementRow, activeElementCol, team, figureType, castling) => {
-
-    if(document.getElementById("show-prev-move")) {
-        document.getElementById("show-prev-move").remove();
-    }
-    function movePlayerFigure() {
-        boardArr[activeElementRow][activeElementCol].active = true;
-        boardArr[activeElementRow][activeElementCol].elementOnBoard = { ...boardArr[activeElementRow][activeElementCol].elementOnBoard, type: figureType };
-
-        setActiveFigure(
-            boardArr[activeElementRow][activeElementCol],
-            boardArr[activeElementRow][activeElementCol].x,
-            boardArr[activeElementRow][activeElementCol].y,
-            boardArr[activeElementRow][activeElementCol].type,
-            boardArr[activeElementRow][activeElementCol].team
-        );
-        const king = findKingColAndRow(move);
-
-        if(castling) {
-            boardArr[row][col].castling = true;
-        }
-        moveFigure(cordX, cordY, boardArr[row][col], row, col);
-        setNotAvailableMoveForKing(king.row, king.col, move);
-
-        if (checkShah(king.row, king.col, move)) {
-            drawSquare(boardArr[king.row][king.col].x, boardArr[king.row][king.col].y, 125, 125, "blue");
-            drawKingImage(boardArr[king.row][king.col].x, boardArr[king.row][king.col].y, move);
-
-            boardArr[king.row][king.col].color = "blue";
-        }
-        waitForMoveAnotherTeam = false;
-    }
-    if(team !== move && !gameEnd) {
-        movePlayerFigure();
-
-        localStorage.setItem(localStorage.getItem("game-hash") + "-current-move", move);
-
-        if(!document.getElementById("show-prev-move")) {
-            const button = document.createElement("button");
-
-            button.setAttribute("id", "show-prev-move");
-            button.innerText = "Повторити хід противника";
-
-            body.appendChild(button);
-
-            button.addEventListener("click", function () {
-                boardArr[activeElementRow][activeElementCol].elementOnBoard = { ...boardArr[row][col].elementOnBoard };
-                boardArr[row][col].elementOnBoard = null;
-
-                drawSquare(boardArr[row][col].x, boardArr[row][col].y, 125, 125, boardArr[row][col].color);
-                drawFigure(
-                    boardArr[activeElementRow][activeElementCol].x,
-                    boardArr[activeElementRow][activeElementCol].y,
-                    boardArr[activeElementRow][activeElementCol].elementOnBoard.type,
-                    boardArr[activeElementRow][activeElementCol].elementOnBoard.team
-                );
-
-                const timeout = setTimeout(function () {
-                    movePlayerFigure();
-
-                    clearTimeout(timeout);
-                }, 1000);
-            });
-        }
-    }
-});
-
-socket.on("player-win", (team) => {
-    if(!gameEnd) {
-        if (team === move) {
-            alert("Ви виграли");
-        } else {
-            alert("Ви програли");
-        }
-        gameEnd = true;
-    }
-});
-
-socket.on("offer-lose", () => {
-    alert("Гравець здався");
-    gameEnd = true;
-
-    offerLoseBtn.remove();
-    offerDrawBtn.remove();
-});
-
-socket.on("offer-draw", () => {
-    const acceptDraw = confirm("Гравець запропонував нічію");
-
-    if(acceptDraw) {
-        gameEnd = true;
-        socket.emit("accept-draw", localStorage.getItem("game-hash"));
-
-        offerLoseBtn.remove();
-        offerDrawBtn.remove();
-    } else {
-        socket.emit("reject-draw");
-    }
-});
-
-socket.on("accept-draw", () => {
-    alert("Гравець прийняв нічію");
-
-    offerLoseBtn.remove();
-    offerDrawBtn.remove();
-
-    gameEnd = true;
-});
-
-socket.on("reject-draw", () => {
-    alert("Гравець відхилив нічію");
-});
-
-offerLoseBtn.addEventListener("click", function () {
-    alert("Ви здалися");
-    socket.emit("offer-lose", localStorage.getItem("game-hash"));
-
-    gameEnd = true;
-
-    offerLoseBtn.remove();
-    offerDrawBtn.remove();
-});
-
-offerDrawBtn.addEventListener("click", function () {
-    socket.emit("offer-draw");
-});
-
-const ctx = canvas.getContext("2d");
+// This is game engine file. File with all core game functions
 
 const PAWN_TYPE = "pawn";
 const HORSE_TYPE = "horse";
@@ -214,39 +7,31 @@ const ELEPHANT_TYPE = "elephant";
 const QUEEN_TYPE = "queen";
 const KING_TYPE = "king";
 
-const brokenWhiteFigure = [];
-const brokenBlackFigure = [];
-
-function drawSquare(x, y, width, height, color) {
+export function drawSquare(ctx, x, y, width, height, color) {
     ctx.beginPath();
     ctx.fillStyle = color;
     ctx.fillRect(x, y, width, height);
 }
 
-function drawGameBoard() {
+function drawImage(ctx, image, x, y, width, height) {
+    ctx.beginPath();
 
-    for(let i = 0; i < boardArr.length; i++) {
-        for(let j = 0; j < boardArr[i].length; j++) {
-            drawSquare(boardArr[i][j].x, boardArr[i][j].y, 125, 125, boardArr[i][j].color);
-
-            if(boardArr[i][j].elementOnBoard) {
-                drawFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
-            }
-        }
-    }
+    image.addEventListener("load", function () {
+        ctx.drawImage(image, x, y, width, height);
+    }, false);
 }
 
-function drawGameBoardAndFillBoardArr() {
+export function drawGameBoardAndFillBoardArr(ctx, boardArr) {
     let tmpX = 0;
     let tmpY = 0;
 
     for(let i = 0; i < 8; i++) {
         if(i % 2 === 0) {
-            drawSquare(tmpX, 0, 125, 125, "gray");
+            drawSquare(ctx, tmpX, 0, 125, 125, "gray");
 
             boardArr[0].push({ x: tmpX, y: 0, color: "gray", elementOnBoard: null, possibleMove: false, active: false, availableForKing: true });
         } else {
-            drawSquare(tmpX, 0, 125, 125, "#b07b00");
+            drawSquare(ctx, tmpX, 0, 125, 125, "#b07b00");
 
             boardArr[0].push({ x: tmpX, y: 0, color: "#b07b00", elementOnBoard: null, possibleMove: false, active: false, availableForKing: true });
         }
@@ -255,21 +40,21 @@ function drawGameBoardAndFillBoardArr() {
 
             if(i % 2 === 0) {
                 if (j % 2 === 0) {
-                    drawSquare(tmpX, tmpY, 125, 125, "#b07b00");
+                    drawSquare(ctx, tmpX, tmpY, 125, 125, "#b07b00");
 
                     boardArr[j+1].push({ x: tmpX, y: tmpY, color: "#b07b00", elementOnBoard: null, possibleMove: false, active: false, availableForKing: true });
                 } else {
-                    drawSquare(tmpX, tmpY, 125, 125, "gray");
+                    drawSquare(ctx, tmpX, tmpY, 125, 125, "gray");
 
                     boardArr[j + 1].push({x: tmpX, y: tmpY, color: "gray", elementOnBoard: null, possibleMove: false, active: false, availableForKing: true });
                 }
             } else {
                 if (j % 2 === 0) {
-                    drawSquare(tmpX, tmpY, 125, 125, "gray");
+                    drawSquare(ctx, tmpX, tmpY, 125, 125, "gray");
 
                     boardArr[j+1].push({ x: tmpX, y: tmpY, color: "gray", elementOnBoard: null, possibleMove: false, active: false, availableForKing: true });
                 } else {
-                    drawSquare(tmpX, tmpY, 125, 125, "#b07b00");
+                    drawSquare(ctx, tmpX, tmpY, 125, 125, "#b07b00");
 
                     boardArr[j+1].push({ x: tmpX, y: tmpY, color: "#b07b00", elementOnBoard: null, possibleMove: false, active: false, availableForKing: true });
                 }
@@ -285,14 +70,14 @@ function drawGameBoardAndFillBoardArr() {
     boardArr[7][6].castling = false;
 }
 
-function drawFiguresOnStartPositions() {
+export function drawFiguresOnStartPositions(ctx, boardArr) {
     // Draw pawn black
     const pawnImgBlack = new Image();
 
     pawnImgBlack.src = '/img/pawn-black.png';
 
     for(let i = 0; i < boardArr.length; i++) {
-        drawImage(pawnImgBlack, boardArr[1][i].x, boardArr[1][i].y, 120, 120);
+        drawImage(ctx, pawnImgBlack, boardArr[1][i].x, boardArr[1][i].y, 120, 120);
 
         boardArr[1][i].elementOnBoard = { type: PAWN_TYPE, team: "black", x: boardArr[1][i].x, y: boardArr[1][i].y };
     }
@@ -302,36 +87,37 @@ function drawFiguresOnStartPositions() {
     pawnImgWhite.src = '/img/pawn-white.png';
 
     for(let i = 0; i < boardArr.length; i++) {
-        drawImage(pawnImgWhite, boardArr[6][i].x, boardArr[6][i].y, 120, 120);
+        drawImage(ctx, pawnImgWhite, boardArr[6][i].x, boardArr[6][i].y, 120, 120);
 
         boardArr[6][i].elementOnBoard = { type: PAWN_TYPE, team: "white", x: boardArr[6][i].x, y: boardArr[6][i].y };
     }
+
     const figureWithoutPawns = [
-        {type: HORSE_TYPE, team: "black", row: 0, col: 1, imgSrc: "/img/horse-black.png"},
-        {type: HORSE_TYPE, team: "black", row: 0, col: 6, imgSrc: "/img/horse-black.png"},
+        { type: HORSE_TYPE, team: "black", row: 0, col: 1, imgSrc: "/img/horse-black.png" },
+        { type: HORSE_TYPE, team: "black", row: 0, col: 6, imgSrc: "/img/horse-black.png" },
 
-        {type: HORSE_TYPE, team: "white", row: 7, col: 1, imgSrc: "/img/horse-white.png"},
-        {type: HORSE_TYPE, team: "white", row: 7, col: 6, imgSrc: "/img/horse-white.png"},
+        { type: HORSE_TYPE, team: "white", row: 7, col: 1, imgSrc: "/img/horse-white.png" },
+        { type: HORSE_TYPE, team: "white", row: 7, col: 6, imgSrc: "/img/horse-white.png"  },
 
-        {type: ROOK_TYPE, team: "black", row: 0, col: 0, imgSrc: "/img/rook-black.png"},
-        {type: ROOK_TYPE, team: "black", row: 0, col: 7, imgSrc: "/img/rook-black.png"},
+        { type: ROOK_TYPE, team: "black", row: 0, col: 0, imgSrc: "/img/rook-black.png" },
+        { type: ROOK_TYPE, team: "black", row: 0, col: 7, imgSrc: "/img/rook-black.png"  },
 
-        {type: ROOK_TYPE, team: "white", row: 7, col: 7, imgSrc: "/img/rook-white.png"},
-        {type: ROOK_TYPE, team: "white", row: 7, col: 0, imgSrc: "/img/rook-white.png"},
+        { type: ROOK_TYPE, team: "white", row: 7, col: 7, imgSrc: "/img/rook-white.png" },
+        { type: ROOK_TYPE, team: "white", row: 7, col: 0, imgSrc: "/img/rook-white.png"  },
 
-        {type: ELEPHANT_TYPE, team: "black", row: 0, col: 2, imgSrc: "/img/elephant-black.png"},
-        {type: ELEPHANT_TYPE, team: "black", row: 0, col: 5, imgSrc: "/img/elephant-black.png"},
+        { type: ELEPHANT_TYPE, team: "black", row: 0, col: 2, imgSrc: "/img/elephant-black.png" },
+        { type: ELEPHANT_TYPE, team: "black", row: 0, col: 5, imgSrc: "/img/elephant-black.png" },
 
-        {type: ELEPHANT_TYPE, team: "white", row: 7, col: 2, imgSrc: "/img/elephant-white.png"},
-        {type: ELEPHANT_TYPE, team: "white", row: 7, col: 5, imgSrc: "/img/elephant-white.png"},
+        { type: ELEPHANT_TYPE, team: "white", row: 7, col: 2, imgSrc: "/img/elephant-white.png" },
+        { type: ELEPHANT_TYPE, team: "white", row: 7, col: 5, imgSrc: "/img/elephant-white.png" },
 
-        {type: QUEEN_TYPE, team: "black", row: 0, col: 3, imgSrc: "/img/queen-black.png"},
+        { type: QUEEN_TYPE, team: "black", row: 0, col: 3, imgSrc: "/img/queen-black.png" },
 
-        {type: QUEEN_TYPE, team: "white", row: 7, col: 3, imgSrc: "/img/queen-white.png"},
+        { type: QUEEN_TYPE, team: "white", row: 7, col: 3, imgSrc: "/img/queen-white.png" },
 
-        {type: KING_TYPE, team: "black", row: 0, col: 4, imgSrc: "/img/king-black.png"},
+        { type: KING_TYPE, team: "black", row: 0, col: 4, imgSrc: "/img/king-black.png" },
 
-        {type: KING_TYPE, team: "white", row: 7, col: 4, imgSrc: "/img/king-white.png"}
+        { type: KING_TYPE, team: "white", row: 7, col: 4, imgSrc: "/img/king-white.png" }
     ];
     let img;
 
@@ -340,8 +126,8 @@ function drawFiguresOnStartPositions() {
 
         img.src = figureWithoutPawns[i].imgSrc;
 
-        drawImage(img, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].x, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].y, 120, 120);
-        drawImage(img, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].x, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].y, 120, 120);
+        drawImage(ctx, img, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].x, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].y, 120, 120);
+        drawImage(ctx, img, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].x, boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].y, 120, 120);
 
         if(figureWithoutPawns[i].type === ROOK_TYPE || figureWithoutPawns[i].type === KING_TYPE) {
             boardArr[figureWithoutPawns[i].row][figureWithoutPawns[i].col].elementOnBoard = {
@@ -358,153 +144,143 @@ function drawFiguresOnStartPositions() {
     }
 }
 
-function drawImage(image, x, y, width, height) {
-    ctx.beginPath();
-
-    image.addEventListener("load", function () {
-        ctx.drawImage(image, x, y, width, height);
-    }, false);
-}
-
-function drawRookImage(xCord, yCord, team) {
+export function drawRookImage(ctx, xCord, yCord, team) {
 
     if(team === "black") {
         const rookImage = new Image();
         rookImage.src = "/img/rook-black.png";
 
-        drawImage(rookImage, xCord, yCord, 120, 120);
+        drawImage(ctx, rookImage, xCord, yCord, 120, 120);
     }
     if(team === "white") {
         const rookImage = new Image();
         rookImage.src = "/img/rook-white.png";
 
-        drawImage(rookImage, xCord, yCord, 120, 120);
+        drawImage(ctx, rookImage, xCord, yCord, 120, 120);
     }
 }
 
-function drawHorseImage(xCord, yCord, team) {
+export function drawHorseImage(ctx, xCord, yCord, team) {
 
     if(team === "black") {
         const rookImage = new Image();
 
         rookImage.src = "/img/horse-black.png";
 
-        drawImage(rookImage, xCord, yCord, 120, 120);
+        drawImage(ctx, rookImage, xCord, yCord, 120, 120);
     }
     if(team === "white") {
         const rookImage = new Image();
         rookImage.src = "/img/horse-white.png";
 
-        drawImage(rookImage, xCord, yCord, 120, 120);
+        drawImage(ctx, rookImage, xCord, yCord, 120, 120);
     }
 }
 
-function drawPawnImage(xCord, yCord, team) {
+export function drawPawnImage(ctx, xCord, yCord, team) {
 
     if(team === "black") {
         const pawnImage = new Image();
         pawnImage.src = "/img/pawn-black.png";
 
-        drawImage(pawnImage, xCord, yCord, 120, 120);
+        drawImage(ctx, pawnImage, xCord, yCord, 120, 120);
     }
     if(team === "white") {
         const pawnImage = new Image();
         pawnImage.src = "/img/pawn-white.png";
 
-        drawImage(pawnImage, xCord, yCord, 120, 120);
+        drawImage(ctx, pawnImage, xCord, yCord, 120, 120);
     }
 }
 
-function drawElephantImage(xCord, yCord, team) {
+export function drawElephantImage(ctx, xCord, yCord, team) {
 
     if(team === "black") {
         const elephantImage = new Image();
         elephantImage.src = "/img/elephant-black.png";
 
-        drawImage(elephantImage, xCord, yCord, 120, 120);
+        drawImage(ctx, elephantImage, xCord, yCord, 120, 120);
     }
     if(team === "white") {
         const elephantImage = new Image();
         elephantImage.src = "/img/elephant-white.png";
 
-        drawImage(elephantImage, xCord, yCord, 120, 120);
+        drawImage(ctx, elephantImage, xCord, yCord, 120, 120);
     }
 }
 
-function drawQueenImage(xCord, yCord, team) {
+export function drawQueenImage(ctx, xCord, yCord, team) {
     if(team === "black") {
         const queenImage = new Image();
         queenImage.src = "/img/queen-black.png";
 
-        drawImage(queenImage, xCord, yCord, 120, 120);
+        drawImage(ctx, queenImage, xCord, yCord, 120, 120);
     }
     if(team === "white") {
         const queenImage = new Image();
         queenImage.src = "/img/queen-white.png";
 
-        drawImage(queenImage, xCord, yCord, 120, 120);
+        drawImage(ctx, queenImage, xCord, yCord, 120, 120);
     }
 }
 
-function drawKingImage(xCord, yCord, team) {
+export function drawKingImage(ctx, xCord, yCord, team) {
     if(team === "black") {
         const queenImage = new Image();
         queenImage.src = "/img/king-black.png";
 
-        drawImage(queenImage, xCord, yCord, 120, 120);
+        drawImage(ctx, queenImage, xCord, yCord, 120, 120);
     }
     if(team === "white") {
         const queenImage = new Image();
         queenImage.src = "/img/king-white.png";
 
-        drawImage(queenImage, xCord, yCord, 120, 120);
+        drawImage(ctx, queenImage, xCord, yCord, 120, 120);
     }
 }
 
-function drawFigure(x, y, type, team) {
-
+export function drawFigure(ctx, x, y, type, team) {
     if(type === PAWN_TYPE) {
-        drawPawnImage(x, y, team);
+        drawPawnImage(ctx, x, y, team);
     }
     if(type === ROOK_TYPE) {
-        drawRookImage(x, y, team);
+        drawRookImage(ctx, x, y, team);
     }
     if(type === HORSE_TYPE) {
-        drawHorseImage(x, y, team);
+        drawHorseImage(ctx, x, y, team);
     }
     if(type === ELEPHANT_TYPE) {
-        drawElephantImage(x, y, team);
+        drawElephantImage(ctx, x, y, team);
     }
     if(type === QUEEN_TYPE) {
-        drawQueenImage(x, y, team);
+        drawQueenImage(ctx, x, y, team);
     }
     if(type === KING_TYPE) {
-        drawKingImage(x, y, team);
+        drawKingImage(ctx, x, y, team);
     }
 }
 
-function deleteActiveFromFigure(activeElement, createImage = true) {
-
+export function deleteActiveFromFigure(ctx, activeElement, createImage = true) {
     if(!activeElement) {
         return;
     }
-    drawSquare(activeElement.x, activeElement.y, 125, 125, activeElement.color);
+    drawSquare(ctx, activeElement.x, activeElement.y, 125, 125, activeElement.color);
 
     activeElement.active = false;
 
     if(createImage) {
-        drawFigure(activeElement.x, activeElement.y, activeElement.elementOnBoard.type, activeElement.elementOnBoard.team);
+        drawFigure(ctx, activeElement.x, activeElement.y, activeElement.elementOnBoard.type, activeElement.elementOnBoard.team);
     }
 }
 
-function deletePossibleMoveForFigure() {
+export function deletePossibleMoveForFigure(ctx, boardArr) {
     for(let i = 0; i < boardArr.length; i++) {
         for(let j = 0; j < boardArr.length; j++) {
             if(boardArr[i][j].possibleMove) {
-                drawSquare(boardArr[i][j].x, boardArr[i][j].y, 125, 125, boardArr[i][j].color);
+                drawSquare(ctx, boardArr[i][j].x, boardArr[i][j].y, 125, 125, boardArr[i][j].color);
 
                 if(boardArr[i][j].elementOnBoard) {
-                    drawFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
+                    drawFigure(ctx, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
                 }
                 boardArr[i][j].possibleMove = false;
             }
@@ -512,20 +288,20 @@ function deletePossibleMoveForFigure() {
     }
 }
 
-function setActiveFigure(boardElement, xCord, yCord, typeFigure, team) {
-    drawSquare(xCord, yCord, 125, 125, "yellow");
+export function setActiveFigure(ctx, boardElement, xCord, yCord, typeFigure, team) {
+    drawSquare(ctx, xCord, yCord, 125, 125, "yellow");
 
     boardElement.active = true;
 
-    drawFigure(xCord, yCord, typeFigure, team);
+    drawFigure(ctx, xCord, yCord, typeFigure, team);
 }
 
-function checkPossibleMoveForPawn(row, col, team, checkShahFor="") {
+export function checkPossibleMoveForPawn(boardArr, row, col, team, checkShahFor="") {
     const indexes = [];
     let prevFigurePresent = { ...boardArr[row][col].elementOnBoard };
 
     function checkShahLocal(boardElement, team) {
-        const king = findKingColAndRow(team);
+        const king = findKingColAndRow(boardArr, team);
         let prevFigure;
 
         if(boardElement.elementOnBoard) {
@@ -535,13 +311,12 @@ function checkPossibleMoveForPawn(row, col, team, checkShahFor="") {
         }
         boardElement.elementOnBoard = { type: PAWN_TYPE, team: team };
 
-        let result = checkShah(king.row, king.col, team);
+        let result = checkShah(boardArr, king.row, king.col, team);
 
         boardElement.elementOnBoard = prevFigure;
 
         return result;
     }
-
     if (team === "black" && checkShahFor === "black") {
         boardArr[row][col].elementOnBoard = null;
 
@@ -625,13 +400,14 @@ function checkPossibleMoveForPawn(row, col, team, checkShahFor="") {
     }
     return indexes;
 }
-function checkPossibleMoveForRook(row, col, team, checkShahFor="") {
+
+export function checkPossibleMoveForRook(boardArr, row, col, team, checkShahFor="") {
     const indexes = [];
     let tmpIndexes = [];
     let prevFigurePresent = { ...boardArr[row][col].elementOnBoard };
 
     function checkShahLocal(boardElement, team) {
-        const king = findKingColAndRow(team);
+        const king = findKingColAndRow(boardArr, team);
         let prevFigure;
 
         if(boardElement.elementOnBoard) {
@@ -641,7 +417,7 @@ function checkPossibleMoveForRook(row, col, team, checkShahFor="") {
         }
         boardElement.elementOnBoard = { type: ROOK_TYPE, team: team };
 
-        let result = checkShah(king.row, king.col, team);
+        let result = checkShah(boardArr, king.row, king.col, team);
 
         boardElement.elementOnBoard = prevFigure;
 
@@ -929,12 +705,12 @@ function checkPossibleMoveForRook(row, col, team, checkShahFor="") {
     }
     return indexes;
 }
-function checkPossibleMoveForHorse(row, col, team, checkShahFor= "") {
+export function checkPossibleMoveForHorse(boardArr, row, col, team, checkShahFor= "") {
     const indexes = [];
     let prevFigurePresent = { ...boardArr[row][col].elementOnBoard };
 
     function checkShahLocal(boardElement, team) {
-        const king = findKingColAndRow(team);
+        const king = findKingColAndRow(boardArr, team);
         let prevFigure;
 
         if(boardElement.elementOnBoard) {
@@ -944,7 +720,7 @@ function checkPossibleMoveForHorse(row, col, team, checkShahFor= "") {
         }
         boardElement.elementOnBoard = { type: HORSE_TYPE, team: team };
 
-        let result = checkShah(king.row, king.col, team);
+        let result = checkShah(boardArr, king.row, king.col, team);
 
         boardElement.elementOnBoard = prevFigure;
 
@@ -1029,13 +805,13 @@ function checkPossibleMoveForHorse(row, col, team, checkShahFor= "") {
     }
     return indexes;
 }
-function checkPossibleMoveForElephant(row, col, team, checkShahFor) {
+export function checkPossibleMoveForElephant(boardArr, row, col, team, checkShahFor) {
     const indexes = [];
     let tmpCol = col + 1;
     let prevFigurePresent = { ...boardArr[row][col].elementOnBoard };
 
     function checkShahLocal(boardElement, team) {
-        const king = findKingColAndRow(team);
+        const king = findKingColAndRow(boardArr, team);
         let prevFigure;
 
         if(boardElement.elementOnBoard) {
@@ -1045,7 +821,7 @@ function checkPossibleMoveForElephant(row, col, team, checkShahFor) {
         }
         boardElement.elementOnBoard = { type: ELEPHANT_TYPE, team: team };
 
-        let result = checkShah(king.row, king.col, team);
+        let result = checkShah(boardArr, king.row, king.col, team);
 
         boardElement.elementOnBoard = prevFigure;
 
@@ -1217,7 +993,7 @@ function checkPossibleMoveForElephant(row, col, team, checkShahFor) {
     }
     return indexes;
 }
-function checkPossibleMoveForKing(row, col, team, withAvailableCheck=true) {
+export function checkPossibleMoveForKing(boardArr, row, col, team, withAvailableCheck=true) {
     const indexes = [];
 
     if(withAvailableCheck) {
@@ -1285,16 +1061,16 @@ function checkPossibleMoveForKing(row, col, team, withAvailableCheck=true) {
         return indexes;
     }
 }
-function checkPossibleMoveForQueen(row, col, team, checkShahFor) {
+export function checkPossibleMoveForQueen(boardArr, row, col, team, checkShahFor) {
     const indexes = [];
 
-    indexes.push(...checkPossibleMoveForRook(row, col, team, checkShahFor));
-    indexes.push(...checkPossibleMoveForElephant(row, col, team, checkShahFor));
+    indexes.push(...checkPossibleMoveForRook(boardArr, row, col, team, checkShahFor));
+    indexes.push(...checkPossibleMoveForElephant(boardArr, row, col, team, checkShahFor));
 
     return indexes;
 }
 
-function calculatePossibleMoveForFigure(row, col, type, team) {
+export function calculatePossibleMoveForFigure(ctx, boardArr, row, col, type, team) {
     function castling(row, col, team) {
         const indexes = [];
 
@@ -1306,7 +1082,7 @@ function calculatePossibleMoveForFigure(row, col, type, team) {
             && boardArr[row][col + 3].elementOnBoard
             && !boardArr[row][col + 3].elementOnBoard.doneFirstMove
             && !boardArr[row][col].elementOnBoard.doneFirstMove
-            && !checkShah(row, col, team)
+            && !checkShah(boardArr, row, col, team)
         ) {
             indexes.push([row, col + 2]);
         }
@@ -1320,7 +1096,7 @@ function calculatePossibleMoveForFigure(row, col, type, team) {
             && boardArr[row][col - 4].elementOnBoard
             && !boardArr[row][col - 4].elementOnBoard.doneFirstMove
             && !boardArr[row][col].elementOnBoard.doneFirstMove
-            && !checkShah(row, col, team)
+            && !checkShah(boardArr, row, col, team)
         ) {
             indexes.push([row, col - 2]);
         }
@@ -1333,8 +1109,8 @@ function calculatePossibleMoveForFigure(row, col, type, team) {
             cords = possibleMoveIndexes[i];
 
             if(boardArr[cords[0]][cords[1]].elementOnBoard) {
-                drawSquare(boardArr[cords[0]][cords[1]].x, boardArr[cords[0]][cords[1]].y, 125, 125, "red");
-                drawFigure(boardArr[cords[0]][cords[1]].x, boardArr[cords[0]][cords[1]].y, boardArr[cords[0]][cords[1]].elementOnBoard.type, boardArr[cords[0]][cords[1]].elementOnBoard.team);
+                drawSquare(ctx, boardArr[cords[0]][cords[1]].x, boardArr[cords[0]][cords[1]].y, 125, 125, "red");
+                drawFigure(ctx, boardArr[cords[0]][cords[1]].x, boardArr[cords[0]][cords[1]].y, boardArr[cords[0]][cords[1]].elementOnBoard.type, boardArr[cords[0]][cords[1]].elementOnBoard.team);
 
                 boardArr[cords[0]][cords[1]].possibleMove = true;
             } else {
@@ -1348,16 +1124,16 @@ function calculatePossibleMoveForFigure(row, col, type, team) {
     }
 
     if(type === PAWN_TYPE) {
-        drawPossibleMove(checkPossibleMoveForPawn(row, col, team, team));
+        drawPossibleMove(checkPossibleMoveForPawn(boardArr, row, col, team, team));
     }
     if(type === ROOK_TYPE) {
-        drawPossibleMove(checkPossibleMoveForRook(row, col, team, team));
+        drawPossibleMove(checkPossibleMoveForRook(boardArr, row, col, team, team));
     }
     if(type === HORSE_TYPE) {
-        drawPossibleMove(checkPossibleMoveForHorse(row, col, team, team));
+        drawPossibleMove(checkPossibleMoveForHorse(boardArr, row, col, team, team));
     }
     if(type === ELEPHANT_TYPE) {
-        drawPossibleMove(checkPossibleMoveForElephant(row, col, team, team));
+        drawPossibleMove(checkPossibleMoveForElephant(boardArr, row, col, team, team));
     }
     if(type === KING_TYPE) {
         const castlingMove = castling(row, col, team);
@@ -1368,17 +1144,17 @@ function calculatePossibleMoveForFigure(row, col, type, team) {
             if(castlingMove.length > 1) {
                 boardArr[castlingMove[1][0]][castlingMove[1][1]].castling = true;
             }
-            drawPossibleMove([...checkPossibleMoveForKing(row, col, team, true), ...castlingMove]);
+            drawPossibleMove([...checkPossibleMoveForKing(boardArr, row, col, team, true), ...castlingMove]);
         } else {
-            drawPossibleMove(checkPossibleMoveForKing(row, col, team, true));
+            drawPossibleMove(checkPossibleMoveForKing(boardArr, row, col, team, true));
         }
     }
     if(type === QUEEN_TYPE) {
-        drawPossibleMove(checkPossibleMoveForQueen(row, col, team, team));
+        drawPossibleMove(checkPossibleMoveForQueen(boardArr, row, col, team, team));
     }
 }
 
-function findActiveElement() {
+export function findActiveElement(boardArr) {
     for(let i = 0; i < boardArr.length; i++) {
         for(let j = 0; j < boardArr[i].length; j++) {
             if(boardArr[i][j].active) {
@@ -1388,49 +1164,39 @@ function findActiveElement() {
     }
 }
 
-function findActiveElementRowAndCol() {
-    for(let i = 0; i < boardArr.length; i++) {
-        for(let j = 0; j < boardArr[i].length; j++) {
-            if(boardArr[i][j].active) {
-                return { row: i, col: j };
-            }
-        }
-    }
-}
-
-function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol) {
-    const element = findActiveElement();
+export function moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, xCord, yCord, boardElement, boardElementRow, boardElementCol) {
+    const element = findActiveElement(boardArr);
 
     if(element) {
         ctx.beginPath();
         ctx.clearRect(element.x, element.y, 125, 125);
 
-        deleteActiveFromFigure(element, false);
+        deleteActiveFromFigure(ctx, element, false);
 
         ctx.beginPath();
         ctx.clearRect(xCord, yCord, 125, 125);
 
-        drawSquare(xCord, yCord, 125, 125, boardElement.color);
+        drawSquare(ctx, xCord, yCord, 125, 125, boardElement.color);
 
-        if(element.elementOnBoard.type === PAWN_TYPE && yCord === 0 && element.elementOnBoard.team === "white" && element.elementOnBoard.team === move
-            || element.elementOnBoard.type === PAWN_TYPE && yCord === 875 && element.elementOnBoard.team === "black" && element.elementOnBoard.team === move) {
+        if(element.elementOnBoard.type === PAWN_TYPE && yCord === 0 && element.elementOnBoard.team === "white"
+            || element.elementOnBoard.type === PAWN_TYPE && yCord === 875 && element.elementOnBoard.team === "black") {
             const selectedFigure = getSelectedFigure();
 
-            drawFigure(xCord, yCord, selectedFigure, element.elementOnBoard.team);
+            drawFigure(ctx, xCord, yCord, selectedFigure, element.elementOnBoard.team);
 
             element.elementOnBoard = { ...element.elementOnBoard, type: selectedFigure };
         } else {
-            drawFigure(xCord, yCord, element.elementOnBoard.type, element.elementOnBoard.team);
+            drawFigure(ctx, xCord, yCord, element.elementOnBoard.type, element.elementOnBoard.team);
         }
         function getSelectedFigure() {
-            const result = prompt("Виберіть нову фігуру: " +
-                "1 - Королева" +
-                " 2 - Тура" +
-                " 3 - Кінь" +
-                " 4 - Слон").replaceAll(" ", "");
+            const result = prompt("Select new figure: " +
+                "1 - Queen" +
+                " 2 - Rook" +
+                " 3 - Horse" +
+                " 4 - Elephant").replaceAll(" ", "");
 
             if (result !== "1" && result !== "2" && result !== "3" && result !== "4") {
-                alert("Хибне значення");
+                alert("Wrong value");
 
                 return getSelectedFigure();
             }
@@ -1447,7 +1213,6 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
                 return ELEPHANT_TYPE;
             }
         }
-
         if(boardElement.elementOnBoard && boardElement.elementOnBoard.team === "black") {
             brokenBlackFigure.push(boardElement.elementOnBoard);
         }
@@ -1463,7 +1228,7 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
             ctx.beginPath();
             ctx.clearRect(boardArr[boardElementRow][0].x, boardArr[boardElementRow][0].y, 125, 125);
 
-            drawSquare(boardArr[boardElementRow][0].x, boardArr[boardElementRow][0].y, 125, 125, boardArr[boardElementRow][0].color);
+            drawSquare(ctx, boardArr[boardElementRow][0].x, boardArr[boardElementRow][0].y, 125, 125, boardArr[boardElementRow][0].color);
 
             boardArr[boardElementRow][3].elementOnBoard = { ...boardArr[boardElementRow][0].elementOnBoard };
             boardArr[boardElementRow][0].elementOnBoard = null;
@@ -1471,18 +1236,16 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
             ctx.beginPath();
             ctx.clearRect(boardArr[boardElementRow][3].x, boardArr[boardElementRow][3].y, 125, 125);
 
-            drawSquare(boardArr[boardElementRow][3].x, boardArr[boardElementRow][3].y, 125, 125, boardArr[boardElementRow][3].color);
-            drawFigure(boardArr[boardElementRow][3].x, boardArr[boardElementRow][3].y, ROOK_TYPE, element.elementOnBoard.team);
+            drawSquare(ctx, boardArr[boardElementRow][3].x, boardArr[boardElementRow][3].y, 125, 125, boardArr[boardElementRow][3].color);
+            drawFigure(ctx, boardArr[boardElementRow][3].x, boardArr[boardElementRow][3].y, ROOK_TYPE, element.elementOnBoard.team);
 
             boardElement.castling = false;
-
-            return true;
         }
         if(boardElement.castling && boardElementCol === 6) {
             ctx.beginPath();
             ctx.clearRect(boardArr[boardElementRow][7].x, boardArr[boardElementRow][7].y, 125, 125);
 
-            drawSquare(boardArr[boardElementRow][7].x, boardArr[boardElementRow][7].y, 125, 125, boardArr[boardElementRow][7].color);
+            drawSquare(ctx, boardArr[boardElementRow][7].x, boardArr[boardElementRow][7].y, 125, 125, boardArr[boardElementRow][7].color);
 
             boardArr[boardElementRow][5].elementOnBoard = { ...boardArr[boardElementRow][7].elementOnBoard };
             boardArr[boardElementRow][7].elementOnBoard = null;
@@ -1490,20 +1253,17 @@ function moveFigure(xCord, yCord, boardElement, boardElementRow, boardElementCol
             ctx.beginPath();
             ctx.clearRect(boardArr[boardElementRow][5].x, boardArr[boardElementRow][5].y, 125, 125);
 
-            drawSquare(boardArr[boardElementRow][5].x, boardArr[boardElementRow][5].y, 125, 125, boardArr[boardElementRow][5].color);
-            drawFigure(boardArr[boardElementRow][5].x, boardArr[boardElementRow][5].y, ROOK_TYPE, element.elementOnBoard.team);
+            drawSquare(ctx, boardArr[boardElementRow][5].x, boardArr[boardElementRow][5].y, 125, 125, boardArr[boardElementRow][5].color);
+            drawFigure(ctx, boardArr[boardElementRow][5].x, boardArr[boardElementRow][5].y, ROOK_TYPE, element.elementOnBoard.team);
 
             boardElement.castling = false;
-
-            return true;
         }
         element.elementOnBoard = null;
         element.active = false;
     }
-    return false;
 }
 
-function findKingColAndRow(team) {
+export function findKingColAndRow(boardArr, team) {
     for(let i = 0; i < boardArr.length; i++) {
         for(let j = 0; j < boardArr[i].length; j++) {
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type === KING_TYPE) {
@@ -1513,49 +1273,49 @@ function findKingColAndRow(team) {
     }
 }
 
-function getAllPossibleMove(team) {
+export function getAllPossibleMove(boardArr, team) {
     const indexes = [];
 
     for(let i = 0; i < boardArr.length; i++) {
         for(let j = 0; j < boardArr[i].length; j++) {
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type === PAWN_TYPE) {
-                indexes.push(...checkPossibleMoveForPawn(i, j, boardArr[i][j].elementOnBoard.team));
+                indexes.push(...checkPossibleMoveForPawn(boardArr, i, j, boardArr[i][j].elementOnBoard.team));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type === HORSE_TYPE) {
-                indexes.push(...checkPossibleMoveForHorse(i, j, boardArr[i][j].elementOnBoard.team));
+                indexes.push(...checkPossibleMoveForHorse(boardArr, i, j, boardArr[i][j].elementOnBoard.team));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type === QUEEN_TYPE) {
-                indexes.push(...checkPossibleMoveForQueen(i, j, boardArr[i][j].elementOnBoard.team));
+                indexes.push(...checkPossibleMoveForQueen(boardArr, i, j, boardArr[i][j].elementOnBoard.team));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type === ROOK_TYPE) {
-                indexes.push(...checkPossibleMoveForRook(i, j, boardArr[i][j].elementOnBoard.team));
+                indexes.push(...checkPossibleMoveForRook(boardArr, i, j, boardArr[i][j].elementOnBoard.team));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type === ELEPHANT_TYPE) {
-                indexes.push(...checkPossibleMoveForElephant(i, j, boardArr[i][j].elementOnBoard.team));
+                indexes.push(...checkPossibleMoveForElephant(boardArr, i, j, boardArr[i][j].elementOnBoard.team));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === team && boardArr[i][j].elementOnBoard.type === KING_TYPE) {
-                indexes.push(...checkPossibleMoveForKing(i, j, boardArr[i][j].elementOnBoard.team));
+                indexes.push(...checkPossibleMoveForKing(boardArr, i, j, boardArr[i][j].elementOnBoard.team));
             }
         }
     }
     return indexes;
 }
 
-function checkMat(kingRow, kingCol, teamWithKing) {
-    const possibleMoveForKing = checkPossibleMoveForKing(kingRow, kingCol, teamWithKing, false);
+export function checkMat(boardArr, kingRow, kingCol, teamWithKing) {
+    const possibleMoveForKing = checkPossibleMoveForKing(boardArr, kingRow, kingCol, teamWithKing, false);
     let horseIndexes;
 
     for(let i = 0; i < boardArr.length; i++) {
         for (let j = 0; j < boardArr[i].length; j++) {
             if (boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team !== teamWithKing && boardArr[i][j].elementOnBoard.type === HORSE_TYPE) {
-                horseIndexes = checkPossibleMoveForHorse(i, j, boardArr[i][j].elementOnBoard.team);
+                horseIndexes = checkPossibleMoveForHorse(boardArr, i, j, boardArr[i][j].elementOnBoard.team);
             }
         }
     }
     if(!possibleMoveForKing.length && horseIndexes.findIndex(cord => cord[0] === kingRow && cord[1] === kingCol) !== -1) {
         return true;
     }
-    const allPossibleMove = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
+    const allPossibleMove = getAllPossibleMove(boardArr, teamWithKing === "white" ? "black" : "white");
 
     for(let i = 0; i < possibleMoveForKing.length; i++) {
         if(allPossibleMove.findIndex(cord => cord[0] === possibleMoveForKing[i][0] && cord[1] === possibleMoveForKing[i][1]) === -1) {
@@ -1567,38 +1327,36 @@ function checkMat(kingRow, kingCol, teamWithKing) {
     for(let i = 0; i < boardArr.length; i++) {
         for(let j = 0; j < boardArr[i].length; j++) {
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === PAWN_TYPE) {
-                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForPawn(i, j, teamWithKing, teamWithKing));
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForPawn(boardArr, i, j, teamWithKing, teamWithKing));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === ROOK_TYPE) {
-                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForRook(i, j, teamWithKing, teamWithKing));
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForRook(boardArr, i, j, teamWithKing, teamWithKing));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === HORSE_TYPE) {
-                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForHorse(i, j, teamWithKing, teamWithKing));
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForHorse(boardArr, i, j, teamWithKing, teamWithKing));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === ELEPHANT_TYPE) {
-                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForElephant(i, j, teamWithKing, teamWithKing));
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForElephant(boardArr, i, j, teamWithKing, teamWithKing));
             }
             if(boardArr[i][j].elementOnBoard && boardArr[i][j].elementOnBoard.team === teamWithKing && boardArr[i][j].elementOnBoard.type === QUEEN_TYPE) {
-                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForQueen(i, j, teamWithKing, teamWithKing));
+                allPossibleFigureMoveWithCheckShah.push(...checkPossibleMoveForQueen(boardArr, i, j, teamWithKing, teamWithKing));
             }
         }
     }
-    if(allPossibleFigureMoveWithCheckShah.length) {
-        return false;
-    }
-    return true;
+    return !allPossibleFigureMoveWithCheckShah.length;
+
 }
 
-function setNotAvailableMoveForKing(kingRow, kingCol, teamWithKing) {
-    setAvailableMoveForKing();
+export function setNotAvailableMoveForKing(boardArr, kingRow, kingCol, teamWithKing) {
+    setAvailableMoveForKing(boardArr);
 
     const notAvailableMoveForKing = [];
-    const possibleMoveForKing = checkPossibleMoveForKing(kingRow, kingCol, teamWithKing);
+    const possibleMoveForKing = checkPossibleMoveForKing(boardArr, kingRow, kingCol, teamWithKing);
 
     if(!possibleMoveForKing.length) {
         return false;
     }
-    const indexes = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
+    const indexes = getAllPossibleMove(boardArr,teamWithKing === "white" ? "black" : "white");
 
     for(let i = 0; i < possibleMoveForKing.length; i++) {
         if(indexes.findIndex(cord => cord[0] === possibleMoveForKing[i][0] && cord[1] === possibleMoveForKing[i][1]) !== -1) {
@@ -1636,7 +1394,7 @@ function setNotAvailableMoveForKing(kingRow, kingCol, teamWithKing) {
         }
         boardArr[filteredPossibleMoveForKing[i][0]][filteredPossibleMoveForKing[i][1]].elementOnBoard = tmpKing;
 
-        tmpIndexes = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
+        tmpIndexes = getAllPossibleMove(boardArr,teamWithKing === "white" ? "black" : "white");
 
         if(tmpIndexes.findIndex(cord => cord[0] === filteredPossibleMoveForKing[i][0] && cord[1] === filteredPossibleMoveForKing[i][1]) !== -1) {
             notAvailableMoveForKing.push([filteredPossibleMoveForKing[i][0], filteredPossibleMoveForKing[i][1]]);
@@ -1650,7 +1408,7 @@ function setNotAvailableMoveForKing(kingRow, kingCol, teamWithKing) {
     }
 }
 
-function setAvailableMoveForKing() {
+export function setAvailableMoveForKing(boardArr) {
     for(let i = 0; i < boardArr.length; i++) {
         for(let j = 0; j < boardArr.length; j++) {
             boardArr[i][j].availableForKing = true;
@@ -1658,45 +1416,45 @@ function setAvailableMoveForKing() {
     }
 }
 
-function checkShah(kingRow, kingCol, teamWithKing) {
-    const allPossibleMove = getAllPossibleMove(teamWithKing === "white" ? "black" : "white");
+export function checkShah(boardArr, kingRow, kingCol, teamWithKing) {
+    const allPossibleMove = getAllPossibleMove(boardArr,teamWithKing === "white" ? "black" : "white");
     return allPossibleMove.findIndex(cord => cord[0] === kingRow && cord[1] === kingCol) !== -1;
 }
 
-function clearBlueColor() {
+export function clearBlueColor(ctx, boardArr) {
     for(let i = 0; i < boardArr.length; i++) {
         for(let j = 0; j < boardArr[i].length; j++) {
             if(boardArr[i][j].color === "blue") {
                 if(i % 2 === 0) {
                     if(j % 2 === 0) {
-                        drawSquare(boardArr[i][j].x, boardArr[i][j].y, 125, 125, "gray");
+                        drawSquare(ctx, boardArr[i][j].x, boardArr[i][j].y, 125, 125, "gray");
 
                         if (boardArr[i][j].elementOnBoard) {
-                            drawFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
+                            drawFigure(ctx, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
                         }
                         boardArr[i][j].color = "gray";
                     } else {
-                        drawSquare(boardArr[i][j].x, boardArr[i][j].y, 125, 125, "#b07b00");
+                        drawSquare(ctx, boardArr[i][j].x, boardArr[i][j].y, 125, 125, "#b07b00");
 
                         if(boardArr[i][j].elementOnBoard) {
-                            drawFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
+                            drawFigure(ctx, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
                         }
                         boardArr[i][j].color = "#b07b00";
                     }
                 }
                 if(i % 2 !== 0) {
                     if(j % 2 === 0) {
-                        drawSquare(boardArr[i][j].x, boardArr[i][j].y, 125, 125, "#b07b00");
+                        drawSquare(ctx, boardArr[i][j].x, boardArr[i][j].y, 125, 125, "#b07b00");
 
                         if (boardArr[i][j].elementOnBoard) {
-                            drawFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
+                            drawFigure(ctx, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
                         }
                         boardArr[i][j].color = "#b07b00";
                     } else {
-                        drawSquare(boardArr[i][j].x, boardArr[i][j].y, 125, 125, "gray");
+                        drawSquare(ctx, boardArr[i][j].x, boardArr[i][j].y, 125, 125, "gray");
 
                         if(boardArr[i][j].elementOnBoard) {
-                            drawFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
+                            drawFigure(ctx, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
                         }
                         boardArr[i][j].color = "gray";
                     }
@@ -1705,82 +1463,4 @@ function clearBlueColor() {
         }
     }
 }
-
-drawGameBoardAndFillBoardArr();
-drawFiguresOnStartPositions();
-
-canvas.addEventListener("click", function (e) {
-
-    if(!gameEnd) {
-        for (let i = 0; i < boardArr.length; i++) {
-            for (let j = 0; j < boardArr[i].length; j++) {
-                if (
-                    e.layerX >= boardArr[i][j].x && e.layerX <= boardArr[i][j].x + 125
-                    && e.layerY >= boardArr[i][j].y
-                    && e.layerY <= boardArr[i][j].y + 125
-                    && !boardArr[i][j].possibleMove
-                    && !boardArr[i][j].elementOnBoard
-                ) {
-                    deletePossibleMoveForFigure();
-                    deleteActiveFromFigure(findActiveElement());
-
-                    break;
-                }
-                if (
-                    e.layerX >= boardArr[i][j].x && e.layerX <= boardArr[i][j].x + 125
-                    && e.layerY >= boardArr[i][j].y
-                    && e.layerY <= boardArr[i][j].y + 125
-                    && !boardArr[i][j].possibleMove
-                    && boardArr[i][j].elementOnBoard
-                    && boardArr[i][j].elementOnBoard.team === move
-                    && !waitForMoveAnotherTeam
-                ) {
-                    deletePossibleMoveForFigure();
-                    deleteActiveFromFigure(findActiveElement());
-                    setActiveFigure(boardArr[i][j], boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
-                    calculatePossibleMoveForFigure(i, j, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
-
-                    break;
-                } else if (
-                    e.layerX >= boardArr[i][j].x && e.layerX <= boardArr[i][j].x + 125
-                    && e.layerY >= boardArr[i][j].y
-                    && e.layerY <= boardArr[i][j].y + 125
-                    && boardArr[i][j].possibleMove
-                    && !waitForMoveAnotherTeam
-                ) {
-                    const {row, col} = findActiveElementRowAndCol();
-
-                    const castling = moveFigure(boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j], i, j);
-
-                    localStorage.setItem(localStorage.getItem("game-hash") + "-current-move", move === "white" ? "black" : "white");
-
-                    if(!castling) {
-                        socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move, boardArr[i][j].elementOnBoard.type);
-                    } else {
-                        socket.emit("move-figure", boardArr[i][j].x, boardArr[i][j].y, i, j, row, col, move, boardArr[i][j].elementOnBoard.type, true)
-                    }
-                    deletePossibleMoveForFigure();
-                    clearBlueColor();
-
-                    waitForMoveAnotherTeam = true;
-
-                    if (move === "white") {
-                        const king = findKingColAndRow("black");
-
-                        if (checkMat(king.row, king.col, "black")) {
-                            socket.emit("player-win", "white");
-                        }
-                    } else {
-                        const king = findKingColAndRow("white");
-
-                        if (checkMat(king.row, king.col, "white")) {
-                            socket.emit("player-win", "black");
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-    }
-});
 
