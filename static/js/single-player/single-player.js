@@ -83,7 +83,7 @@ canvas.addEventListener("click", function (e) {
                     setNotAvailableMoveForKing(boardArr, king.row, king.col,"black");
 
                     if(checkMat(boardArr, king.row, king.col, "black")) {
-                        alert("White win");
+                        alert("Білі перемогли");
 
                         window.location.reload();
                     } else {
@@ -101,7 +101,7 @@ canvas.addEventListener("click", function (e) {
                     setNotAvailableMoveForKing(boardArr, king.row, king.col,"white");
 
                     if(checkMat(boardArr, king.row, king.col, "white")) {
-                        alert("Black win");
+                        alert("Чорні перемогли");
 
                         window.location.reload();
                     } else {
