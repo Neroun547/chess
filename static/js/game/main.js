@@ -7,6 +7,29 @@ const ELEPHANT_TYPE = "elephant";
 const QUEEN_TYPE = "queen";
 const KING_TYPE = "king";
 
+export function drawGameBoard(ctx, boardArr) {
+
+    for(let i = 0; i < boardArr.length; i++) {
+        for(let j = 0; j < boardArr[i].length; j++) {
+            drawSquare(ctx, boardArr[i][j].x, boardArr[i][j].y, 125, 125, boardArr[i][j].color);
+
+            if(boardArr[i][j].elementOnBoard) {
+                drawFigure(ctx, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j].elementOnBoard.type, boardArr[i][j].elementOnBoard.team);
+            }
+        }
+    }
+}
+
+export function findActiveElementRowAndCol(boardArr) {
+    for(let i = 0; i < boardArr.length; i++) {
+        for(let j = 0; j < boardArr[i].length; j++) {
+            if(boardArr[i][j].active) {
+                return { row: i, col: j };
+            }
+        }
+    }
+}
+
 export function drawSquare(ctx, x, y, width, height, color) {
     ctx.beginPath();
     ctx.fillStyle = color;
@@ -1164,7 +1187,7 @@ export function findActiveElement(boardArr) {
     }
 }
 
-export function moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, xCord, yCord, boardElement, boardElementRow, boardElementCol) {
+export function moveFigure(ctx, boardArr, brokenBlackFigure, brokenWhiteFigure, xCord, yCord, boardElement, boardElementRow, boardElementCol, move) {
     const element = findActiveElement(boardArr);
 
     if(element) {
@@ -1178,8 +1201,8 @@ export function moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, 
 
         drawSquare(ctx, xCord, yCord, 125, 125, boardElement.color);
 
-        if(element.elementOnBoard.type === PAWN_TYPE && yCord === 0 && element.elementOnBoard.team === "white"
-            || element.elementOnBoard.type === PAWN_TYPE && yCord === 875 && element.elementOnBoard.team === "black") {
+        if(element.elementOnBoard.type === PAWN_TYPE && yCord === 0 && element.elementOnBoard.team === "white" && element.elementOnBoard.team === move
+            || element.elementOnBoard.type === PAWN_TYPE && yCord === 875 && element.elementOnBoard.team === "black" && element.elementOnBoard.team === move) {
             const selectedFigure = getSelectedFigure();
 
             drawFigure(ctx, xCord, yCord, selectedFigure, element.elementOnBoard.team);
@@ -1189,14 +1212,14 @@ export function moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, 
             drawFigure(ctx, xCord, yCord, element.elementOnBoard.type, element.elementOnBoard.team);
         }
         function getSelectedFigure() {
-            const result = prompt("Select new figure: " +
-                "1 - Queen" +
-                " 2 - Rook" +
-                " 3 - Horse" +
-                " 4 - Elephant").replaceAll(" ", "");
+            const result = prompt("Виберіть нову фігуру: " +
+                "1 - Королева" +
+                " 2 - Тура" +
+                " 3 - Кінь" +
+                " 4 - Слон").replaceAll(" ", "");
 
             if (result !== "1" && result !== "2" && result !== "3" && result !== "4") {
-                alert("Wrong value");
+                alert("Хибне значення");
 
                 return getSelectedFigure();
             }
@@ -1213,6 +1236,7 @@ export function moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, 
                 return ELEPHANT_TYPE;
             }
         }
+
         if(boardElement.elementOnBoard && boardElement.elementOnBoard.team === "black") {
             brokenBlackFigure.push(boardElement.elementOnBoard);
         }
@@ -1240,6 +1264,8 @@ export function moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, 
             drawFigure(ctx, boardArr[boardElementRow][3].x, boardArr[boardElementRow][3].y, ROOK_TYPE, element.elementOnBoard.team);
 
             boardElement.castling = false;
+
+            return true;
         }
         if(boardElement.castling && boardElementCol === 6) {
             ctx.beginPath();
@@ -1257,10 +1283,13 @@ export function moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, 
             drawFigure(ctx, boardArr[boardElementRow][5].x, boardArr[boardElementRow][5].y, ROOK_TYPE, element.elementOnBoard.team);
 
             boardElement.castling = false;
+
+            return true;
         }
         element.elementOnBoard = null;
         element.active = false;
     }
+    return false;
 }
 
 export function findKingColAndRow(boardArr, team) {
