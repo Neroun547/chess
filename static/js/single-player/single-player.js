@@ -16,8 +16,6 @@ import {
     checkShah
 } from "../game/main.js";
 
-
-
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -75,7 +73,7 @@ canvas.addEventListener("click", function (e) {
                 && e.layerY <= boardArr[i][j].y + 125
                 && boardArr[i][j].possibleMove
             ) {
-                moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j], i, j);
+                moveFigure(ctx, boardArr, brokenWhiteFigure, brokenBlackFigure, boardArr[i][j].x, boardArr[i][j].y, boardArr[i][j], i, j, move);
                 deletePossibleMoveForFigure(ctx, boardArr);
                 clearBlueColor(ctx, boardArr);
 
