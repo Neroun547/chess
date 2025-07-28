@@ -6,6 +6,9 @@ import { resolve } from "path";
 import { createHash } from "crypto";
 import { createClient } from "redis";
 import { Server } from "socket.io";
+import {sendJavaScriptStaticFile} from "./utils/sendJavaScriptStaticFile.js";
+import {sendCssStaticFile} from "./utils/sendCssStaticFile.js";
+import {makeRequest} from "./utils/makeRequest.js";
 
 let redisConnection;
 
@@ -17,27 +20,10 @@ let redisConnection;
 
 const server = createServer( async (req, res) => {
     if(req.method === "GET") {
-        if(req.url === "/css/normalize.css") {
-            res.writeHead(200, {"Content-Type": "text/css"});
-            res.end(await readFile(resolve("static/css/normalize.css")));
-        } else if(req.url === "/css/main.css") {
-            res.writeHead(200, {"Content-Type": "text/css"});
-            res.end(await readFile(resolve("static/css/main.css")));
-        } else if(req.url === "/css/multi-player/multi-player.css") {
-            res.writeHead(200, {"Content-Type": "text/css"});
-            res.end(await readFile(resolve("static/css/multi-player/multi-player.css")));
-        } else if(req.url === "/js/game/main.js") {
-            res.writeHead(200, { "Content-Type": "text/javascript" });
-            res.end(await readFile(resolve("static/js/game/main.js")));
-        } else if(req.url === "/js/single-player/single-player.js") {
-            res.writeHead(200, {"Content-Type": "text/javascript"});
-            res.end(await readFile(resolve("static/js/single-player/single-player.js")));
-        } else if(req.url === "/js/multi-player/multi-player-wait-room.js") {
-            res.writeHead(200, { "Content-Type": "text/javascript" });
-            res.end(await readFile(resolve("static/js/multi-player/multi-player-wait-room.js")));
-        } else if(req.url === "/js/multi-player/multi-player-game.js") {
-            res.writeHead(200, { "Content-Type": "text/javascript" });
-            res.end(await readFile(resolve("static/js/multi-player/multi-player-game.js")));
+        if(req.url.includes("/css/")) {
+            await sendCssStaticFile(req.url, res);
+        } else if(req.url.includes("/js/")) {
+            await sendJavaScriptStaticFile(req.url, res);
         } else if(req.url === "/") {
             res.writeHead(200, {"Content-Type": "text/html"});
             res.end(await readFile(resolve("static/pages/main.html")));
@@ -50,6 +36,12 @@ const server = createServer( async (req, res) => {
         } else if(req.url === "/multi-player/game") {
             res.writeHead(200, { "Content-Type": "text/html" });
             res.end(await readFile(resolve("static/pages/multi-player/multi-player-game.html")));
+        } else if(req.url === "/signup") {
+            res.writeHead(200, { "Content-Type": "text/html" });
+            res.end(await readFile(resolve("static/pages/signup/signup.html")));
+        } else if(req.url === "/auth") {
+            res.writeHead(200, { "Content-Type": "text/html" });
+            res.end(await readFile(resolve("static/pages/auth/auth.html")));
         } else if(req.url.includes("/img/")) {
             if(existsSync(resolve("static" + req.url))) {
                 res.writeHead(200, {"Content-Type": "image/png"});
@@ -156,10 +148,30 @@ io.on("connect", (socket) => {
             io.to(room).emit("move-figure", cordX, cordY, row, col, activeElementRow, activeElementCol, team, figureType, castling);
         });
     });
-    socket.on("player-win", (team) => {
+    socket.on("player-win", async (team, authToken) => {
         socket.rooms.forEach(room => {
              io.to(room).emit("player-win", team);
         });
+
+        const randomWinGameId = Date.now();
+
+        if(authToken && typeof authToken === "string") {
+            await redisConnection.set(String(randomWinGameId), authToken, {
+                EX: 172800
+            });
+            makeRequest(
+                "POST",
+                "localhost",
+                "/api/game-statistic/add-win-game/",
+                JSON.stringify({ winGameId: randomWinGameId }),
+                8090,
+                authToken
+            )
+                .then((res) => {
+                    console.log(res);
+                })
+                .catch(e => console.log("Error add game to game statistic:", e));
+        }
     });
     socket.on("get-game-board", (board) => {
         socket.rooms.forEach(room => {
@@ -167,7 +179,6 @@ io.on("connect", (socket) => {
         });
     });
     socket.on("offer-lose", (hash) => {
-
         socket.rooms.forEach(room => {
             socket.to(room).emit("offer-lose");
         });

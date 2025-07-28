@@ -301,7 +301,7 @@ canvas.addEventListener("click", function (e) {
                         const king = findKingColAndRow(boardArr, "black");
 
                         if (checkMat(boardArr, king.row, king.col, "black")) {
-                            socket.emit("player-win", "white");
+                            socket.emit("player-win", "white", localStorage.getItem("authToken"));
 
                             deleteControlButtons();
                         }

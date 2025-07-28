@@ -1,5 +1,23 @@
+#exit-from-account {
+    display: none;
+    margin: 10px;
+    margin-left: auto;
+}
+
+.wrapper__main-statistic {
+    display: none;
+}
+
+.text-center {
+    text-align: center;
+}
+
 .main-logo {
     text-align: center;
+}
+
+.wrapper__main {
+    padding: 10px;
 }
 
 .wrapper__buttons {

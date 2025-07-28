@@ -1,0 +1,25 @@
+.wrapper__form {
+    background-color: #ebebeb;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    max-width: 600px;
+    padding: 10px;
+    margin: 0 auto;
+    margin-top: 100px;
+}
+
+.wrapper__form input {
+    margin-top: 20px;
+    font-size: 18px;
+}
+
+.wrapper__form button {
+    margin-top: 20px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+

@@ -10,14 +10,35 @@
     <title>Шахи</title>
 </head>
 <body>
-    <h1 class="main-logo">Шахи онлайн</h1>
-    <div class="wrapper__buttons">
-        <a href="/multi-player">
-            <button>Онлайн гра</button>
-        </a>
-        <a href="/single-player">
-            <button>Гра на одному комп'ютері</button>
-        </a>
+    <button id="exit-from-account">Вийти з аккаунту</button>
+    <div class="wrapper__main">
+        <div>
+            <h1 class="main-logo">Шахи онлайн</h1>
+            <div class="wrapper__buttons">
+                <a href="/multi-player">
+                    <button>Онлайн гра</button>
+                </a>
+                <a href="/single-player">
+                    <button>Гра на одному комп'ютері</button>
+                </a>
+                <a href="/signup" id="create-account-link">
+                    <button>Створити аккаунт</button>
+                </a>
+                <a href="/auth" id="auth-link">
+                    <button>Увійти в аккаунт</button>
+                </a>
+            </div>
+        </div>
+        <div class="wrapper__main-statistic">
+            <div class="wrapper__main-statistic-user-info">
+                <h2>Користувач</h2>
+            </div>
+            <h2>Ваша статистика:</h2>
+            <div class="wrapper__main-statistic-statistic">
+
+            </div>
+        </div>
     </div>
+    <script type="text/javascript" src="/js/main.js"></script>
 </body>
 </html>

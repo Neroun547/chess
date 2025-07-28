@@ -76,11 +76,10 @@ createGameBtn.addEventListener("click", async function () {
         startGameBtn.innerText = "Почати гру";
         startGameBtn.addEventListener("click", function () {
             startGame = true;
-            localStorage.clear();
-
             socket.emit("start-game", data.hash);
 
             localStorage.setItem("game-hash", data.hash);
+            localStorage.setItem(data.hash + "-current-move", "");
 
             window.location.href = "/multi-player/game";
         });
@@ -145,8 +144,9 @@ connectToGameBtn.addEventListener("click", function () {
         });
         socket.on("start-game", () => {
             startGame = true;
-            localStorage.clear();
+
             localStorage.setItem("game-hash", e.target[0].value);
+            localStorage.setItem(e.target[0].value + "-current-move", "");
 
             window.location.href = "/multi-player/game";
         });
