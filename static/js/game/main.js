@@ -900,7 +900,7 @@ export function checkPossibleMoveForElephant(boardArr, row, col, team, checkShah
             for (let i = row - 1; i >= 0; i--) {
                 if (tmpCol <= boardArr.length - 1) {
                     if (!boardArr[i][tmpCol].elementOnBoard) {
-                        if (!checkShahLocal(boardArr[i][col], team)) {
+                        if (!checkShahLocal(boardArr[i][tmpCol], team)) {
                             indexes.push([i, tmpCol]);
                         }
                     }
